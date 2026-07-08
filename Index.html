@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Material Manager - Stage 3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .sidebar-item { transition: all 0.2s; border-left: 3px solid transparent; }
+        .sidebar-item.active { border-left-color: #4f46e5; background-color: #eef2ff; color: #4f46e5; }
+        .data-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-slate-800">
+
+    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col">
+        <div class="p-6 text-xl font-bold text-indigo-600 flex items-center gap-2">
+            <span class="bg-indigo-600 text-white p-1 rounded-lg text-sm">MB</span> STAGE 3
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <button onclick="showTab('dashboard')" id="btn-dashboard" class="sidebar-item active w-full text-left px-4 py-3 font-medium rounded-lg">Dashboard</button>
+            <button onclick="showTab('items')" id="btn-items" class="sidebar-item w-full text-left px-4 py-3 font-medium rounded-lg">Items</button>
+            <button onclick="showTab('parties')" id="btn-parties" class="sidebar-item w-full text-left px-4 py-3 font-medium rounded-lg">Parties</button>
+            <button onclick="showTab('inward-entry')" id="btn-inward-entry" class="sidebar-item w-full text-left px-4 py-3 font-medium rounded-lg">Inward/Damage Entry</button>
+            <button onclick="showTab('inward-ledger')" id="btn-inward-ledger" class="sidebar-item w-full text-left px-4 py-3 font-medium rounded-lg">Inward/Damage Ledger</button>
+            <button onclick="showTab('booking-entry')" id="btn-booking-entry" class="sidebar-item w-full text-left px-4 py-3 font-medium rounded-lg">Create Booking</button>
+            <button onclick="showTab('booking-ledger')" id="btn-booking-ledger" class="sidebar-item w-full text-left px-4 py-3 font-medium rounded-lg">Booking Ledger</button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-8 overflow-y-auto">
+        <div class="max-w-6xl mx-auto">
+            <h1 id="page-title" class="text-2xl font-bold mb-6 text-slate-900">Dashboard</h1>
+            
+            <div id="view-dashboard" class="space-y-6">
+                <div class="data-card p-6">
+                    <h3 class="font-bold mb-4 text-lg">Inventory Summary</h3>
+                    <table class="w-full text-left border-collapse">
+                        <thead><tr class="text-slate-500 border-b text-sm uppercase"><th class="pb-4">Item Name</th><th class="pb-4">Inward Stock</th><th class="pb-4">Damaged</th><th class="pb-4">Booked</th><th class="pb-4">Balance</th></tr></thead>
+                        <tbody id="dashboard-table-body"></tbody>
+                    </table>
+                </div>
+                
+                <div class="data-card p-6">
+                    <h3 class="font-bold mb-4 text-lg text-indigo-700">Future Bookings (Pending Arrival)</h3>
+                    <table class="w-full text-left border-collapse">
+                        <thead><tr class="text-slate-500 border-b text-sm uppercase"><th class="pb-4">Order No</th><th class="pb-4">Party</th><th class="pb-4">Item</th><th class="pb-4">Qty</th><th class="pb-4">Action</th></tr></thead>
+                        <tbody id="future-booking-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-items" class="hidden space-y-6">
+                <div class="data-card p-6">
+                    <h3 class="font-bold mb-4">Register Material</h3>
+                    <div class="flex gap-4">
+                        <input type="text" id="new-item-name" placeholder="Item name" class="flex-1 border rounded-lg px-4 py-2 text-sm">
+                        <button onclick="addMaterial()" class="bg-indigo-600 text-white px-6 rounded-lg text-sm font-semibold">Register</button>
+                    </div>
+                    <div id="material-list" class="mt-4"></div>
+                </div>
+            </div>
+            
+            <div id="view-parties" class="hidden space-y-6">
+                <div class="data-card p-6">
+                    <h3 class="font-bold mb-4">Register Party</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="text" id="party-name" placeholder="Party Name" class="border rounded-lg px-4 py-2 text-sm">
+                        <input type="text" id="party-gst" placeholder="GST Number" class="border rounded-lg px-4 py-2 text-sm">
+                        <button onclick="addParty()" class="bg-indigo-600 text-white rounded-lg text-sm font-semibold">Save Party</button>
+                    </div>
+                    <div id="party-list" class="mt-4"></div>
+                </div>
+            </div>
+            
+            <div id="view-inward-entry" class="hidden space-y-6">
+                <div class="data-card p-6">
+                    <h3 class="font-bold mb-4 text-emerald-600">New Stock Inward</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <select id="inward-item" class="border rounded-lg px-4 py-2 text-sm"></select>
+                        <input type="number" id="inward-qty" placeholder="Quantity" class="border rounded-lg px-4 py-2 text-sm">
+                        <button onclick="addInward()" class="bg-emerald-600 text-white rounded-lg py-2 text-sm font-semibold">Add Inward Stock</button>
+                    </div>
+                </div>
+                <div class="data-card p-6">
+                    <h3 class="font-bold mb-4 text-red-600">Report Damage</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <select id="damage-item" onchange="updateDamageLots()" class="border rounded-lg px-4 py-2 text-sm"></select>
+                        <select id="damage-lot" class="border rounded-lg px-4 py-2 text-sm"></select>
+                        <input type="number" id="damage-qty" placeholder="Quantity" class="border rounded-lg px-4 py-2 text-sm">
+                        <button onclick="addDamage()" class="bg-red-600 text-white rounded-lg py-2 text-sm font-semibold">Report Damage</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="view-inward-ledger" class="hidden data-card p-6">
+                <h3 class="font-bold mb-4">Inward & Damage History</h3>
+                <table class="w-full text-sm"><thead class="border-b"><tr class="text-left"><th>Date</th><th>Type</th><th>Lot</th><th>Material</th><th>Qty</th></tr></thead><tbody id="inward-table"></tbody></table>
+            </div>
+            
+            <div id="view-booking-entry" class="hidden data-card p-6">
+                <h3 class="font-bold mb-4">New Booking Entry</h3>
+                <div id="booking-error" class="hidden p-3 mb-4 bg-red-100 text-red-700 rounded text-sm font-bold"></div>
+                <div class="space-y-4 max-w-lg">
+                    <select id="b-item" class="w-full border rounded-lg px-4 py-2 text-sm"></select>
+                    <select id="b-party" class="w-full border rounded-lg px-4 py-2 text-sm"></select>
+                    <input type="number" id="b-qty" placeholder="Quantity" class="w-full border rounded-lg px-4 py-2 text-sm">
+                    <input type="number" id="b-amount" placeholder="Booking Amount" class="w-full border rounded-lg px-4 py-2 text-sm">
+                    <label class="flex items-center gap-2 text-sm font-bold">
+                        <input type="checkbox" id="b-is-future"> Mark as Future Booking
+                    </label>
+                    <button onclick="addBooking()" class="w-full bg-indigo-600 text-white rounded-lg py-2 text-sm font-semibold">Book Material</button>
+                </div>
+            </div>
+            
+            <div id="view-booking-ledger" class="hidden data-card p-6">
+                <h3 class="font-bold mb-4">Booking Ledger</h3>
+                <table class="w-full text-sm"><thead class="border-b"><tr class="text-left"><th>Order No</th><th>Date</th><th>Firm</th><th>Material</th><th>Qty</th><th>Amount</th><th>Actions</th></tr></thead><tbody id="ledger-table"></tbody></table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let state = JSON.parse(localStorage.getItem('mb_stage3')) || { materials: [], transactions: [], bookings: [], futureBookings: [], parties: [], itemCounter: 1, lotCounter: 1, bookingCounter: 1 };
+
+        function save() { localStorage.setItem('mb_stage3', JSON.stringify(state)); refresh(); }
+
+        function showTab(tabId) {
+            ['dashboard', 'items', 'parties', 'inward-entry', 'inward-ledger', 'booking-entry', 'booking-ledger'].forEach(id => {
+                const view = document.getElementById('view-' + id);
+                if(view) view.classList.add('hidden');
+                const btn = document.getElementById('btn-' + id);
+                if(btn) btn.classList.remove('active');
+            });
+            const activeView = document.getElementById('view-' + tabId);
+            if(activeView) activeView.classList.remove('hidden');
+            const activeBtn = document.getElementById('btn-' + tabId);
+            if(activeBtn) activeBtn.classList.add('active');
+            document.getElementById('page-title').innerText = tabId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+
+        function transferBooking(idx) {
+            const b = state.futureBookings[idx];
+            
+            const inQty = state.transactions.filter(t => t.itemId == b.itemId && t.type === 'inward').reduce((a,c) => a + c.qty, 0);
+            const damQty = state.transactions.filter(t => t.itemId == b.itemId && t.type === 'damage').reduce((a,c) => a + c.qty, 0);
+            const outQty = state.bookings.filter(b_ => b_.itemId == b.itemId).reduce((a,c) => a + c.qty, 0);
+            const balance = inQty - damQty - outQty;
+
+            if (b.qty > balance) {
+                alert(`Insufficient stock! Available balance: ${balance}`);
+                return;
+            }
+
+            state.bookings.push(b);
+            state.futureBookings.splice(idx, 1);
+            save();
+            alert("Booking moved to current ledger!");
+        }
+
+        function refresh() {
+            document.getElementById('dashboard-table-body').innerHTML = state.materials.map(m => {
+                const inQty = state.transactions.filter(t => t.itemId == m.id && t.type === 'inward').reduce((a,c) => a + c.qty, 0);
+                const damQty = state.transactions.filter(t => t.itemId == m.id && t.type === 'damage').reduce((a,c) => a + c.qty, 0);
+                const outQty = state.bookings.filter(b => b.itemId == m.id).reduce((a,c) => a + c.qty, 0);
+                return `<tr><td class="py-3">${m.name}</td><td class="py-3">${inQty}</td><td class="py-3">${damQty}</td><td class="py-3">${outQty}</td><td class="py-3 font-bold">${inQty - damQty - outQty}</td></tr>`;
+            }).join('');
+
+            document.getElementById('future-booking-table-body').innerHTML = state.futureBookings.map((b, idx) => {
+                const m = state.materials.find(x => x.id == b.itemId);
+                return `<tr><td class="py-3">${b.orderNo}</td><td class="py-3">${b.party}</td><td class="py-3">${m?.name || 'Deleted'}</td><td class="py-3">${b.qty}</td><td class="py-3"><button onclick="transferBooking(${idx})" class="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-bold">Confirm Arrival</button></td></tr>`;
+            }).join('');
+
+            document.getElementById('material-list').innerHTML = state.materials.map(m => `<div class="flex justify-between items-center text-sm p-2 border-b"><span>${m.code}: ${m.name}</span><button onclick="deleteMaterial(${m.id})" class="text-red-500 font-bold">Delete</button></div>`).join('');
+            document.getElementById('party-list').innerHTML = state.parties.map(p => `<div class="flex justify-between items-center text-sm p-2 border-b"><span>${p.name} (${p.gst})</span><button onclick="deleteParty(${p.id})" class="text-red-500 font-bold">Delete</button></div>`).join('');
+            
+            const opts = state.materials.map(m => `<option value="${m.id}">${m.code} - ${m.name}</option>`).join('');
+            document.getElementById('inward-item').innerHTML = opts;
+            document.getElementById('damage-item').innerHTML = opts;
+            document.getElementById('b-item').innerHTML = opts;
+            document.getElementById('b-party').innerHTML = state.parties.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+            
+            document.getElementById('inward-table').innerHTML = state.transactions.map(t => {
+                const m = state.materials.find(x => x.id == t.itemId);
+                return `<tr><td>${t.date}</td><td><span class="${t.type === 'damage' ? 'text-red-500' : 'text-emerald-500'} font-bold">${t.type.toUpperCase()}</span></td><td>${t.lot}</td><td>${m?.name || 'Deleted'}</td><td>${t.qty}</td></tr>`;
+            }).join('');
+
+            document.getElementById('ledger-table').innerHTML = state.bookings.map((b, idx) => {
+                const m = state.materials.find(x => x.id == b.itemId);
+                return `<tr><td>${b.orderNo}</td><td>${b.date}</td><td>${b.party}</td><td>${m?.name || 'Deleted'}</td><td>${b.qty}</td><td>${b.amount}</td><td><button onclick="editBooking(${idx})" class="text-indigo-600 font-bold hover:underline">Edit</button></td></tr>`;
+            }).join('');
+            
+            updateDamageLots();
+        }
+
+        function updateDamageLots() {
+            const itemId = document.getElementById('damage-item').value;
+            const lotSelect = document.getElementById('damage-lot');
+            const lots = state.transactions.filter(t => t.itemId == itemId && t.type === 'inward');
+            lotSelect.innerHTML = lots.map(l => `<option value="${l.lot}">${l.lot}</option>`).join('');
+        }
+
+        function editBooking(idx) {
+            const b = state.bookings[idx];
+            const newQty = prompt("Enter new Quantity:", b.qty);
+            const newAmount = prompt("Enter new Amount:", b.amount);
+            
+            if(newQty === null || newAmount === null) return;
+            const q = parseInt(newQty);
+            
+            const inQty = state.transactions.filter(t => t.itemId == b.itemId && t.type === 'inward').reduce((a,c) => a + c.qty, 0);
+            const damQty = state.transactions.filter(t => t.itemId == b.itemId && t.type === 'damage').reduce((a,c) => a + c.qty, 0);
+            const otherBookings = state.bookings.filter((b,i) => i !== idx && b.itemId == b.itemId).reduce((a,c) => a + c.qty, 0);
+            const balance = inQty - damQty - otherBookings;
+
+            if (q > balance) {
+                alert(`Insufficient stock! Available balance: ${balance}`);
+                return;
+            }
+
+            state.bookings[idx].qty = q;
+            state.bookings[idx].amount = newAmount;
+            save();
+        }
+
+        function addMaterial() { const name = document.getElementById('new-item-name').value; if(!name) return; state.materials.push({ id: Date.now(), name, code: 'SIMCode-' + String(state.itemCounter++).padStart(4,'0') }); save(); }
+        function deleteMaterial(id) { state.materials = state.materials.filter(m => m.id !== id); save(); }
+        function addParty() { const name = document.getElementById('party-name').value; const gst = document.getElementById('party-gst').value; if(!name) return; state.parties.push({ id: Date.now(), name, gst }); save(); }
+        function deleteParty(id) { state.parties = state.parties.filter(p => p.id !== id); save(); }
+        function addInward() { const itemId = document.getElementById('inward-item').value; const qty = parseInt(document.getElementById('inward-qty').value); if(!itemId || !qty) return; state.transactions.push({ itemId: parseInt(itemId), qty, type: 'inward', lot: 'SIMLotNo-' + String(state.lotCounter++).padStart(4,'0'), date: new Date().toLocaleDateString() }); save(); }
+        function addDamage() { const itemId = document.getElementById('damage-item').value; const lot = document.getElementById('damage-lot').value; const qty = parseInt(document.getElementById('damage-qty').value); if(!itemId || !qty || !lot) return; state.transactions.push({ itemId: parseInt(itemId), qty, type: 'damage', lot: lot, date: new Date().toLocaleDateString() }); save(); }
+        
+        function addBooking() { 
+            const itemId = parseInt(document.getElementById('b-item').value); 
+            const qty = parseInt(document.getElementById('b-qty').value); 
+            const amount = document.getElementById('b-amount').value;
+            const party = document.getElementById('b-party').value; 
+            const isFuture = document.getElementById('b-is-future').checked;
+            const errorEl = document.getElementById('booking-error');
+            
+            if(!itemId || !qty || !party || !amount) return; 
+
+            if (!isFuture) {
+                const inQty = state.transactions.filter(t => t.itemId == itemId && t.type === 'inward').reduce((a,c) => a + c.qty, 0);
+                const damQty = state.transactions.filter(t => t.itemId == itemId && t.type === 'damage').reduce((a,c) => a + c.qty, 0);
+                const outQty = state.bookings.filter(b => b.itemId == itemId).reduce((a,c) => a + c.qty, 0);
+                const balance = inQty - damQty - outQty;
+
+                if (qty > balance) {
+                    errorEl.innerText = `Error: Insufficient stock. Available balance is ${balance}.`;
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+            }
+
+            errorEl.classList.add('hidden');
+            const bookingData = { orderNo: 'SIM-' + String(state.bookingCounter++).padStart(4,'0'), party, itemId, qty, amount, date: new Date().toLocaleDateString() };
+            
+            if (isFuture) state.futureBookings.push(bookingData);
+            else state.bookings.push(bookingData);
+            
+            save();
+            alert("Booking Saved!");
+        }
+        
+        refresh();
+    </script>
+</body>
+</html>
