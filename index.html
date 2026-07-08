@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .sidebar-item { transition: all 0.2s; border-left: 3px solid transparent; }
+        .sidebar-item { transition: all 0.2s; border-left: 3px solid transparent; cursor: pointer; }
         .sidebar-item.active { border-left-color: #4f46e5; background-color: #eef2ff; color: #4f46e5; }
         .data-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; }
     </style>
@@ -40,14 +40,6 @@
                     <table class="w-full text-left border-collapse">
                         <thead><tr class="text-slate-500 border-b text-sm uppercase"><th class="pb-4">Item Name</th><th class="pb-4">Inward Stock</th><th class="pb-4">Damaged</th><th class="pb-4">Booked</th><th class="pb-4">Balance</th></tr></thead>
                         <tbody id="dashboard-table-body"></tbody>
-                    </table>
-                </div>
-                
-                <div class="data-card p-6">
-                    <h3 class="font-bold mb-4 text-lg text-indigo-700">Future Bookings (Pending Arrival)</h3>
-                    <table class="w-full text-left border-collapse">
-                        <thead><tr class="text-slate-500 border-b text-sm uppercase"><th class="pb-4">Order No</th><th class="pb-4">Party</th><th class="pb-4">Item</th><th class="pb-4">Qty</th><th class="pb-4">Action</th></tr></thead>
-                        <tbody id="future-booking-table-body"></tbody>
                     </table>
                 </div>
             </div>
@@ -96,68 +88,77 @@
             </div>
             
             <div id="view-inward-ledger" class="hidden data-card p-6">
-                <h3 class="font-bold mb-4">Inward & Damage History</h3>
-                <table class="w-full text-sm"><thead class="border-b"><tr class="text-left"><th>Date</th><th>Type</th><th>Lot</th><th>Material</th><th>Qty</th></tr></thead><tbody id="inward-table"></tbody></table>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold">Inward & Damage History</h3>
+                    <button onclick="exportCSV('inward')" class="text-sm bg-slate-700 text-white px-4 py-1 rounded">Download Excel</button>
+                </div>
+                <table class="w-full text-sm">
+                    <thead class="border-b">
+                        <tr class="text-left"><th>Date</th><th>Type</th><th>Lot</th><th>Material</th><th>Qty</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="inward-table"></tbody>
+                </table>
             </div>
             
             <div id="view-booking-entry" class="hidden data-card p-6">
                 <h3 class="font-bold mb-4">New Booking Entry</h3>
-                <div id="booking-error" class="hidden p-3 mb-4 bg-red-100 text-red-700 rounded text-sm font-bold"></div>
                 <div class="space-y-4 max-w-lg">
                     <select id="b-item" class="w-full border rounded-lg px-4 py-2 text-sm"></select>
                     <select id="b-party" class="w-full border rounded-lg px-4 py-2 text-sm"></select>
                     <input type="number" id="b-qty" placeholder="Quantity" class="w-full border rounded-lg px-4 py-2 text-sm">
                     <input type="number" id="b-amount" placeholder="Booking Amount" class="w-full border rounded-lg px-4 py-2 text-sm">
-                    <label class="flex items-center gap-2 text-sm font-bold">
-                        <input type="checkbox" id="b-is-future"> Mark as Future Booking
-                    </label>
                     <button onclick="addBooking()" class="w-full bg-indigo-600 text-white rounded-lg py-2 text-sm font-semibold">Book Material</button>
                 </div>
             </div>
             
             <div id="view-booking-ledger" class="hidden data-card p-6">
-                <h3 class="font-bold mb-4">Booking Ledger</h3>
-                <table class="w-full text-sm"><thead class="border-b"><tr class="text-left"><th>Order No</th><th>Date</th><th>Firm</th><th>Material</th><th>Qty</th><th>Amount</th><th>Actions</th></tr></thead><tbody id="ledger-table"></tbody></table>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold">Booking Ledger</h3>
+                    <button onclick="exportCSV('booking')" class="text-sm bg-slate-700 text-white px-4 py-1 rounded">Download Excel</button>
+                </div>
+                <table class="w-full text-sm"><thead class="border-b"><tr class="text-left"><th>Order No</th><th>Date</th><th>Firm</th><th>Material</th><th>Qty</th><th>Amount</th></tr></thead><tbody id="ledger-table"></tbody></table>
             </div>
         </div>
     </main>
 
     <script>
-        let state = JSON.parse(localStorage.getItem('mb_stage3')) || { materials: [], transactions: [], bookings: [], futureBookings: [], parties: [], itemCounter: 1, lotCounter: 1, bookingCounter: 1 };
+        let state = JSON.parse(localStorage.getItem('mb_stage3')) || { 
+            materials: [], transactions: [], bookings: [], parties: [], 
+            itemCounter: 1, lotCounter: 1, bookingCounter: 1, transactionCounter: 1 
+        };
 
         function save() { localStorage.setItem('mb_stage3', JSON.stringify(state)); refresh(); }
 
         function showTab(tabId) {
             ['dashboard', 'items', 'parties', 'inward-entry', 'inward-ledger', 'booking-entry', 'booking-ledger'].forEach(id => {
-                const view = document.getElementById('view-' + id);
-                if(view) view.classList.add('hidden');
-                const btn = document.getElementById('btn-' + id);
-                if(btn) btn.classList.remove('active');
+                document.getElementById('view-' + id)?.classList.add('hidden');
+                document.getElementById('btn-' + id)?.classList.remove('active');
             });
-            const activeView = document.getElementById('view-' + tabId);
-            if(activeView) activeView.classList.remove('hidden');
-            const activeBtn = document.getElementById('btn-' + tabId);
-            if(activeBtn) activeBtn.classList.add('active');
-            document.getElementById('page-title').innerText = tabId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            document.getElementById('view-' + tabId)?.classList.remove('hidden');
+            document.getElementById('btn-' + tabId)?.classList.add('active');
         }
 
-        function transferBooking(idx) {
-            const b = state.futureBookings[idx];
-            
-            const inQty = state.transactions.filter(t => t.itemId == b.itemId && t.type === 'inward').reduce((a,c) => a + c.qty, 0);
-            const damQty = state.transactions.filter(t => t.itemId == b.itemId && t.type === 'damage').reduce((a,c) => a + c.qty, 0);
-            const outQty = state.bookings.filter(b_ => b_.itemId == b.itemId).reduce((a,c) => a + c.qty, 0);
-            const balance = inQty - damQty - outQty;
-
-            if (b.qty > balance) {
-                alert(`Insufficient stock! Available balance: ${balance}`);
-                return;
+        function exportCSV(type) {
+            let csv = "data:text/csv;charset=utf-8,";
+            if (type === 'inward') {
+                csv += "Date,Type,Lot,Material,Qty\n";
+                state.transactions.forEach(t => {
+                    const m = state.materials.find(x => x.id == t.itemId);
+                    csv += `${t.date},${t.type},${t.lot},${m?.name || 'Deleted'},${t.qty}\n`;
+                });
+            } else {
+                csv += "Order No,Date,Firm,Material,Qty,Amount\n";
+                state.bookings.forEach(b => {
+                    const m = state.materials.find(x => x.id == b.itemId);
+                    csv += `${b.orderNo},${b.date},${b.party},${m?.name || 'Deleted'},${b.qty},${b.amount}\n`;
+                });
             }
-
-            state.bookings.push(b);
-            state.futureBookings.splice(idx, 1);
-            save();
-            alert("Booking moved to current ledger!");
+            const encodedUri = encodeURI(csv);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", type + "_ledger.csv");
+            document.body.appendChild(link);
+            link.click();
         }
 
         function refresh() {
@@ -168,103 +169,29 @@
                 return `<tr><td class="py-3">${m.name}</td><td class="py-3">${inQty}</td><td class="py-3">${damQty}</td><td class="py-3">${outQty}</td><td class="py-3 font-bold">${inQty - damQty - outQty}</td></tr>`;
             }).join('');
 
-            document.getElementById('future-booking-table-body').innerHTML = state.futureBookings.map((b, idx) => {
-                const m = state.materials.find(x => x.id == b.itemId);
-                return `<tr><td class="py-3">${b.orderNo}</td><td class="py-3">${b.party}</td><td class="py-3">${m?.name || 'Deleted'}</td><td class="py-3">${b.qty}</td><td class="py-3"><button onclick="transferBooking(${idx})" class="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-bold">Confirm Arrival</button></td></tr>`;
-            }).join('');
-
-            document.getElementById('material-list').innerHTML = state.materials.map(m => `<div class="flex justify-between items-center text-sm p-2 border-b"><span>${m.code}: ${m.name}</span><button onclick="deleteMaterial(${m.id})" class="text-red-500 font-bold">Delete</button></div>`).join('');
-            document.getElementById('party-list').innerHTML = state.parties.map(p => `<div class="flex justify-between items-center text-sm p-2 border-b"><span>${p.name} (${p.gst})</span><button onclick="deleteParty(${p.id})" class="text-red-500 font-bold">Delete</button></div>`).join('');
-            
-            const opts = state.materials.map(m => `<option value="${m.id}">${m.code} - ${m.name}</option>`).join('');
-            document.getElementById('inward-item').innerHTML = opts;
-            document.getElementById('damage-item').innerHTML = opts;
-            document.getElementById('b-item').innerHTML = opts;
-            document.getElementById('b-party').innerHTML = state.parties.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
-            
             document.getElementById('inward-table').innerHTML = state.transactions.map(t => {
                 const m = state.materials.find(x => x.id == t.itemId);
-                return `<tr><td>${t.date}</td><td><span class="${t.type === 'damage' ? 'text-red-500' : 'text-emerald-500'} font-bold">${t.type.toUpperCase()}</span></td><td>${t.lot}</td><td>${m?.name || 'Deleted'}</td><td>${t.qty}</td></tr>`;
+                return `<tr><td class="py-2">${t.date}</td><td class="py-2 font-bold ${t.type==='damage'?'text-red-500':'text-emerald-500'}">${t.type.toUpperCase()}</td><td class="py-2">${t.lot}</td><td class="py-2">${m?.name || 'Deleted'}</td><td class="py-2">${t.qty}</td><td class="py-2"><button onclick="deleteTrans(${t.id})" class="text-red-500">Delete</button></td></tr>`;
             }).join('');
 
-            document.getElementById('ledger-table').innerHTML = state.bookings.map((b, idx) => {
+            document.getElementById('ledger-table').innerHTML = state.bookings.map(b => {
                 const m = state.materials.find(x => x.id == b.itemId);
-                return `<tr><td>${b.orderNo}</td><td>${b.date}</td><td>${b.party}</td><td>${m?.name || 'Deleted'}</td><td>${b.qty}</td><td>${b.amount}</td><td><button onclick="editBooking(${idx})" class="text-indigo-600 font-bold hover:underline">Edit</button></td></tr>`;
+                return `<tr><td class="py-2">${b.orderNo}</td><td class="py-2">${b.date}</td><td class="py-2">${b.party}</td><td class="py-2">${m?.name || 'Deleted'}</td><td class="py-2">${b.qty}</td><td class="py-2">${b.amount}</td></tr>`;
             }).join('');
-            
-            updateDamageLots();
+
+            const opts = state.materials.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+            document.getElementById('inward-item').innerHTML = document.getElementById('damage-item').innerHTML = document.getElementById('b-item').innerHTML = opts;
+            document.getElementById('b-party').innerHTML = state.parties.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
         }
 
-        function updateDamageLots() {
-            const itemId = document.getElementById('damage-item').value;
-            const lotSelect = document.getElementById('damage-lot');
-            const lots = state.transactions.filter(t => t.itemId == itemId && t.type === 'inward');
-            lotSelect.innerHTML = lots.map(l => `<option value="${l.lot}">${l.lot}</option>`).join('');
-        }
+        function deleteTrans(id) { state.transactions = state.transactions.filter(t => t.id !== id); save(); }
+        function addMaterial() { state.materials.push({ id: Date.now(), name: document.getElementById('new-item-name').value }); save(); }
+        function addParty() { state.parties.push({ id: Date.now(), name: document.getElementById('party-name').value }); save(); }
+        function addInward() { state.transactions.push({ id: state.transactionCounter++, itemId: document.getElementById('inward-item').value, qty: parseInt(document.getElementById('inward-qty').value), type: 'inward', lot: 'LOT-' + state.lotCounter++, date: new Date().toLocaleDateString() }); save(); }
+        function addDamage() { state.transactions.push({ id: state.transactionCounter++, itemId: document.getElementById('damage-item').value, qty: parseInt(document.getElementById('damage-qty').value), type: 'damage', lot: document.getElementById('damage-lot').value, date: new Date().toLocaleDateString() }); save(); }
+        function addBooking() { state.bookings.push({ orderNo: 'BK-' + state.bookingCounter++, itemId: document.getElementById('b-item').value, party: document.getElementById('b-party').value, qty: parseInt(document.getElementById('b-qty').value), amount: document.getElementById('b-amount').value, date: new Date().toLocaleDateString() }); save(); }
+        function updateDamageLots() { const lots = state.transactions.filter(t => t.itemId == document.getElementById('damage-item').value && t.type === 'inward'); document.getElementById('damage-lot').innerHTML = lots.map(l => `<option value="${l.lot}">${l.lot}</option>`).join(''); }
 
-        function editBooking(idx) {
-            const b = state.bookings[idx];
-            const newQty = prompt("Enter new Quantity:", b.qty);
-            const newAmount = prompt("Enter new Amount:", b.amount);
-            
-            if(newQty === null || newAmount === null) return;
-            const q = parseInt(newQty);
-            
-            const inQty = state.transactions.filter(t => t.itemId == b.itemId && t.type === 'inward').reduce((a,c) => a + c.qty, 0);
-            const damQty = state.transactions.filter(t => t.itemId == b.itemId && t.type === 'damage').reduce((a,c) => a + c.qty, 0);
-            const otherBookings = state.bookings.filter((b,i) => i !== idx && b.itemId == b.itemId).reduce((a,c) => a + c.qty, 0);
-            const balance = inQty - damQty - otherBookings;
-
-            if (q > balance) {
-                alert(`Insufficient stock! Available balance: ${balance}`);
-                return;
-            }
-
-            state.bookings[idx].qty = q;
-            state.bookings[idx].amount = newAmount;
-            save();
-        }
-
-        function addMaterial() { const name = document.getElementById('new-item-name').value; if(!name) return; state.materials.push({ id: Date.now(), name, code: 'SIMCode-' + String(state.itemCounter++).padStart(4,'0') }); save(); }
-        function deleteMaterial(id) { state.materials = state.materials.filter(m => m.id !== id); save(); }
-        function addParty() { const name = document.getElementById('party-name').value; const gst = document.getElementById('party-gst').value; if(!name) return; state.parties.push({ id: Date.now(), name, gst }); save(); }
-        function deleteParty(id) { state.parties = state.parties.filter(p => p.id !== id); save(); }
-        function addInward() { const itemId = document.getElementById('inward-item').value; const qty = parseInt(document.getElementById('inward-qty').value); if(!itemId || !qty) return; state.transactions.push({ itemId: parseInt(itemId), qty, type: 'inward', lot: 'SIMLotNo-' + String(state.lotCounter++).padStart(4,'0'), date: new Date().toLocaleDateString() }); save(); }
-        function addDamage() { const itemId = document.getElementById('damage-item').value; const lot = document.getElementById('damage-lot').value; const qty = parseInt(document.getElementById('damage-qty').value); if(!itemId || !qty || !lot) return; state.transactions.push({ itemId: parseInt(itemId), qty, type: 'damage', lot: lot, date: new Date().toLocaleDateString() }); save(); }
-        
-        function addBooking() { 
-            const itemId = parseInt(document.getElementById('b-item').value); 
-            const qty = parseInt(document.getElementById('b-qty').value); 
-            const amount = document.getElementById('b-amount').value;
-            const party = document.getElementById('b-party').value; 
-            const isFuture = document.getElementById('b-is-future').checked;
-            const errorEl = document.getElementById('booking-error');
-            
-            if(!itemId || !qty || !party || !amount) return; 
-
-            if (!isFuture) {
-                const inQty = state.transactions.filter(t => t.itemId == itemId && t.type === 'inward').reduce((a,c) => a + c.qty, 0);
-                const damQty = state.transactions.filter(t => t.itemId == itemId && t.type === 'damage').reduce((a,c) => a + c.qty, 0);
-                const outQty = state.bookings.filter(b => b.itemId == itemId).reduce((a,c) => a + c.qty, 0);
-                const balance = inQty - damQty - outQty;
-
-                if (qty > balance) {
-                    errorEl.innerText = `Error: Insufficient stock. Available balance is ${balance}.`;
-                    errorEl.classList.remove('hidden');
-                    return;
-                }
-            }
-
-            errorEl.classList.add('hidden');
-            const bookingData = { orderNo: 'SIM-' + String(state.bookingCounter++).padStart(4,'0'), party, itemId, qty, amount, date: new Date().toLocaleDateString() };
-            
-            if (isFuture) state.futureBookings.push(bookingData);
-            else state.bookings.push(bookingData);
-            
-            save();
-            alert("Booking Saved!");
-        }
-        
         refresh();
     </script>
 </body>
