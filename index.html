@@ -116,7 +116,7 @@
                     <h3 class="font-bold">Booking Ledger</h3>
                     <button onclick="exportCSV('booking')" class="text-sm bg-slate-700 text-white px-4 py-1 rounded">Download Excel</button>
                 </div>
-                <table class="w-full text-sm"><thead class="border-b"><tr class="text-left"><th>Order No</th><th>Date</th><th>Firm</th><th>Material</th><th>Qty</th><th>Amount</th></tr></thead><tbody id="ledger-table"></tbody></table>
+                <table class="w-full text-sm"><thead class="border-b"><tr class="text-left"><th>Order No</th><th>Date</th><th>Firm</th><th>Material</th><th>Qty</th><th>Amount</th><th>Action</th></tr></thead><tbody id="ledger-table"></tbody></table>
             </div>
         </div>
     </main>
@@ -176,7 +176,7 @@
 
             document.getElementById('ledger-table').innerHTML = state.bookings.map(b => {
                 const m = state.materials.find(x => x.id == b.itemId);
-                return `<tr><td class="py-2">${b.orderNo}</td><td class="py-2">${b.date}</td><td class="py-2">${b.party}</td><td class="py-2">${m?.name || 'Deleted'}</td><td class="py-2">${b.qty}</td><td class="py-2">${b.amount}</td></tr>`;
+                return `<tr><td class="py-2">${b.orderNo}</td><td class="py-2">${b.date}</td><td class="py-2">${b.party}</td><td class="py-2">${m?.name || 'Deleted'}</td><td class="py-2">${b.qty}</td><td class="py-2">${b.amount}</td><td class="py-2"><button onclick="deleteBooking(${b.orderNo.replace('BK-','')})" class="text-red-500">Delete</button></td></tr>`;
             }).join('');
 
             const opts = state.materials.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
@@ -185,6 +185,7 @@
         }
 
         function deleteTrans(id) { state.transactions = state.transactions.filter(t => t.id !== id); save(); }
+        function deleteBooking(id) { state.bookings = state.bookings.filter(b => b.orderNo !== 'BK-' + id); save(); }
         function addMaterial() { state.materials.push({ id: Date.now(), name: document.getElementById('new-item-name').value }); save(); }
         function addParty() { state.parties.push({ id: Date.now(), name: document.getElementById('party-name').value }); save(); }
         function addInward() { state.transactions.push({ id: state.transactionCounter++, itemId: document.getElementById('inward-item').value, qty: parseInt(document.getElementById('inward-qty').value), type: 'inward', lot: 'LOT-' + state.lotCounter++, date: new Date().toLocaleDateString() }); save(); }
